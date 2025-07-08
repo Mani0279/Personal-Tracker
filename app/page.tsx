@@ -9,6 +9,9 @@ import TransactionList from '@/components/TransactionList';
 import MonthlyExpensesChart from '@/components/MonthlyExpensesChart';
 import CategoryPieChart from '@/components/CategoryPieChart';
 import DashboardSummary from '@/components/DashboardSummary';
+import BudgetManager from '@/components/BudgetManager';
+import BudgetVsActualChart from '@/components/BudgetVsActualChart';
+import SpendingInsights from '@/components/SpendingInsights';
 import { toast } from 'sonner';
 
 interface Transaction {
@@ -20,13 +23,22 @@ interface Transaction {
   category: string;
 }
 
+interface Budget {
+  _id: string;
+  category: string;
+  amount: number;
+  month: string;
+}
+
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   // Fetch transactions
   const fetchTransactions = async () => {
@@ -43,17 +55,36 @@ export default function Home() {
       console.error('Error fetching transactions:', error);
       setDbError(error.message || 'Database connection failed');
       toast.error('Failed to load transactions. Please check your database connection.');
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  // Fetch budgets
+  const fetchBudgets = async () => {
+    try {
+      const response = await fetch('/api/budgets');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch budgets');
+      }
+      const data = await response.json();
+      setBudgets(data);
+    } catch (error: any) {
+      console.error('Error fetching budgets:', error);
+      // Don't show error for budgets as they're optional
     }
   };
 
   useEffect(() => {
-    fetchTransactions();
+    const loadData = async () => {
+      setIsLoading(true);
+      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      setIsLoading(false);
+    };
+    loadData();
   }, []);
 
-  // Handle form submission
-  const handleSubmit = async (transactionData: Omit<Transaction, '_id'>) => {
+  // Handle transaction form submission
+  const handleTransactionSubmit = async (transactionData: Omit<Transaction, '_id'>) => {
     setIsSubmitting(true);
     try {
       const url = editingTransaction 
@@ -87,7 +118,7 @@ export default function Home() {
         toast.success('Transaction added successfully');
       }
       
-      handleCloseForm();
+      handleCloseTransactionForm();
     } catch (error: any) {
       toast.error(error.message || 'Failed to save transaction');
     } finally {
@@ -95,8 +126,78 @@ export default function Home() {
     }
   };
 
-  // Handle delete
-  const handleDelete = async (id: string) => {
+  // Handle budget form submission
+  const handleBudgetSubmit = async (budgetData: Omit<Budget, '_id'>) => {
+    try {
+      const url = `/api/budgets`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(budgetData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save budget');
+      }
+
+      const savedBudget = await response.json();
+      setBudgets(prev => [...prev, savedBudget]);
+      return savedBudget;
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  // Handle budget edit
+  const handleBudgetEdit = async (budget: Budget) => {
+    try {
+      const response = await fetch(`/api/budgets/${budget._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: budget.category,
+          amount: budget.amount,
+          month: budget.month
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update budget');
+      }
+
+      const updatedBudget = await response.json();
+      setBudgets(prev => 
+        prev.map(b => b._id === budget._id ? updatedBudget : b)
+      );
+      return updatedBudget;
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  // Handle budget delete
+  const handleBudgetDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/budgets/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete budget');
+      
+      setBudgets(prev => prev.filter(b => b._id !== id));
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Handle transaction delete
+  const handleTransactionDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/transactions/${id}`, {
         method: 'DELETE',
@@ -110,20 +211,20 @@ export default function Home() {
     }
   };
 
-  // Handle edit
-  const handleEdit = (transaction: Transaction) => {
+  // Handle transaction edit
+  const handleTransactionEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setIsFormOpen(true);
   };
 
-  // Handle add new
-  const handleAdd = () => {
+  // Handle add new transaction
+  const handleAddTransaction = () => {
     setEditingTransaction(null);
     setIsFormOpen(true);
   };
 
-  // Handle close form
-  const handleCloseForm = () => {
+  // Handle close transaction form
+  const handleCloseTransactionForm = () => {
     setIsFormOpen(false);
     setEditingTransaction(null);
   };
@@ -132,7 +233,9 @@ export default function Home() {
   const handleRetry = () => {
     setIsLoading(true);
     setDbError(null);
-    fetchTransactions();
+    Promise.all([fetchTransactions(), fetchBudgets()]).finally(() => {
+      setIsLoading(false);
+    });
   };
 
   return (
@@ -143,7 +246,7 @@ export default function Home() {
             Personal Finance Visualizer
           </h1>
           <p className="text-gray-600">
-            Track your expenses and income with detailed analytics and category insights
+            Track your expenses and income with detailed analytics, categories, and budget management
           </p>
         </div>
 
@@ -172,6 +275,17 @@ export default function Home() {
           />
         </div>
 
+        {/* Budget Management */}
+        <div className="mb-8">
+          <BudgetManager
+            budgets={budgets}
+            onAdd={handleBudgetSubmit}
+            onEdit={handleBudgetEdit}
+            onDelete={handleBudgetDelete}
+            isLoading={isLoading}
+          />
+        </div>
+
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <MonthlyExpensesChart 
@@ -184,18 +298,34 @@ export default function Home() {
           />
         </div>
 
-        {/* Transactions Section */}
-        <div className="space-y-6">
-          <TransactionList
+        {/* Budget vs Actual and Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <BudgetVsActualChart
             transactions={transactions}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAdd={handleAdd}
+            budgets={budgets}
+            selectedMonth={selectedMonth}
+            isLoading={isLoading}
+          />
+          <SpendingInsights
+            transactions={transactions}
+            budgets={budgets}
+            selectedMonth={selectedMonth}
             isLoading={isLoading}
           />
         </div>
 
-        {/* Form Dialog */}
+        {/* Transactions Section */}
+        <div className="space-y-6">
+          <TransactionList
+            transactions={transactions}
+            onEdit={handleTransactionEdit}
+            onDelete={handleTransactionDelete}
+            onAdd={handleAddTransaction}
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Transaction Form Dialog */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -205,8 +335,8 @@ export default function Home() {
             </DialogHeader>
             <TransactionForm
               transaction={editingTransaction || undefined}
-              onSubmit={handleSubmit}
-              onCancel={handleCloseForm}
+              onSubmit={handleTransactionSubmit}
+              onCancel={handleCloseTransactionForm}
               isLoading={isSubmitting}
             />
           </DialogContent>

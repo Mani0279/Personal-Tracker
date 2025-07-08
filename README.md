@@ -1,6 +1,6 @@
 # Personal Finance Visualizer
 
-A modern web application for tracking personal finances with detailed analytics and visualizations.
+A modern web application for tracking personal finances with detailed analytics, categories, and budget management.
 
 ## Features
 
@@ -22,10 +22,16 @@ A modern web application for tracking personal finances with detailed analytics 
 - Dynamic category selection based on transaction type
 - Color-coded categories for better visualization
 
-### Stage 3: Budgeting (Coming Soon)
-- Set monthly category budgets
-- Budget vs actual comparison chart
-- Simple spending insights
+### Stage 3: Budgeting ✅
+- Set monthly category budgets with easy management interface
+- Budget vs actual comparison chart with detailed breakdown
+- Spending insights and recommendations:
+  - Budget warnings (over-budget, near-budget alerts)
+  - Spending pattern analysis
+  - Monthly comparison insights
+  - Personalized recommendations
+- Month selector for historical budget tracking
+- Real-time budget tracking and alerts
 
 ## Tech Stack
 
@@ -77,6 +83,13 @@ npm run dev
 4. Fill in the amount, description, and date
 5. Click "Add" to save
 
+### Setting Budgets
+1. Go to the "Budget Management" section
+2. Click "Set Budget" button
+3. Select a category and month
+4. Enter your monthly budget amount
+5. Click "Set Budget" to save
+
 ### Categories Available
 
 **Expense Categories:**
@@ -102,22 +115,29 @@ npm run dev
 - **Monthly Chart**: Track spending patterns over time
 - **Category Breakdown**: See spending distribution by category
 - **Recent Transactions**: Quick view of latest transactions
+- **Budget Management**: Set and manage monthly category budgets
+- **Budget vs Actual**: Compare planned vs actual spending
+- **Spending Insights**: Get personalized recommendations and warnings
 
-### Editing Transactions
-1. Click the edit icon next to any transaction
-2. Modify the details including category
-3. Click "Update" to save changes
+### Budget Tracking
+- **Budget Warnings**: Get alerts when approaching or exceeding budgets
+- **Monthly Comparison**: See how your spending changes month-over-month
+- **Category Analysis**: Identify your most frequent spending categories
+- **Recommendations**: Receive personalized spending advice
 
-### Deleting Transactions
-1. Click the delete icon next to any transaction
-2. Confirm the deletion
+### Editing and Deleting
+- **Transactions**: Click edit/delete icons to modify or remove transactions
+- **Budgets**: Use the budget manager to edit or delete monthly budgets
+- **Real-time Updates**: All changes are reflected immediately across all charts
 
 ## Project Structure
 
 ```
 personalexpencetracker/
 ├── app/
-│   ├── api/transactions/     # API routes for transactions
+│   ├── api/
+│   │   ├── transactions/     # Transaction API routes
+│   │   └── budgets/          # Budget API routes
 │   ├── globals.css          # Global styles
 │   ├── layout.tsx           # Root layout
 │   └── page.tsx             # Main page component
@@ -127,23 +147,36 @@ personalexpencetracker/
 │   ├── TransactionList.tsx  # Transaction list component
 │   ├── MonthlyExpensesChart.tsx # Monthly chart component
 │   ├── CategoryPieChart.tsx # Category breakdown chart
-│   └── DashboardSummary.tsx # Dashboard summary cards
+│   ├── DashboardSummary.tsx # Dashboard summary cards
+│   ├── BudgetForm.tsx       # Budget form component
+│   ├── BudgetManager.tsx    # Budget management interface
+│   ├── BudgetVsActualChart.tsx # Budget comparison chart
+│   └── SpendingInsights.tsx # Spending insights component
 ├── lib/
 │   ├── db.ts               # Database connection
 │   ├── categories.ts       # Category configuration
 │   └── utils.ts            # Utility functions
 ├── models/
-│   └── Transaction.ts      # MongoDB schema
+│   ├── Transaction.ts      # Transaction MongoDB schema
+│   └── Budget.ts           # Budget MongoDB schema
 └── public/                 # Static assets
 ```
 
 ## API Endpoints
 
+### Transactions
 - `GET /api/transactions` - Get all transactions
 - `POST /api/transactions` - Create a new transaction
 - `GET /api/transactions/[id]` - Get a specific transaction
 - `PUT /api/transactions/[id]` - Update a transaction
 - `DELETE /api/transactions/[id]` - Delete a transaction
+
+### Budgets
+- `GET /api/budgets` - Get all budgets (with optional month/year filters)
+- `POST /api/budgets` - Create a new budget
+- `GET /api/budgets/[id]` - Get a specific budget
+- `PUT /api/budgets/[id]` - Update a budget
+- `DELETE /api/budgets/[id]` - Delete a budget
 
 ## Contributing
 
